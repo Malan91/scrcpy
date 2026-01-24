@@ -49,6 +49,7 @@ struct sc_screen {
     } req;
 
     SDL_Window *window;
+    SDL_Renderer *renderer;
     struct sc_size frame_size;
     struct sc_size content_size; // rotated frame_size
 
