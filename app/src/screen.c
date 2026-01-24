@@ -411,10 +411,22 @@ sc_screen_init(struct sc_screen *screen,
         goto error_destroy_fps_counter;
     }
 
+    screen->renderer = SDL_CreateRenderer(screen->window, NULL);
+    if (!screen->renderer) {
+        LOGE("Could not create renderer: %s", SDL_GetError());
+        goto error_destroy_window;
+    }
+
+    bool mipmaps = params->video;
+    ok = sc_display_init(&screen->display, screen->renderer, mipmaps);
+    if (!ok) {
+        goto error_destroy_renderer;
+    }
+
     ok = SDL_StartTextInput(screen->window);
     if (!ok) {
         LOGE("Could not enable text input: %s", SDL_GetError());
-        goto error_destroy_window;
+        goto error_destroy_display;
     }
 
     SDL_Surface *icon = sc_icon_load_scrcpy();
@@ -428,33 +440,22 @@ sc_screen_init(struct sc_screen *screen,
     } else {
         // without video, the icon is used as window content, it must be present
         LOGE("Could not load icon");
-        goto error_destroy_window;
+        goto error_destroy_display;
     }
 
-    screen->renderer = SDL_CreateRenderer(screen->window, NULL);
-    if (!screen->renderer) {
-        LOGE("Could not create renderer: %s", SDL_GetError());
-        goto error_destroy_window;
-    }
-
-    SDL_Surface *icon_novideo;
-    bool mipmaps;
-    if (params->video) {
-        icon_novideo = NULL;
-        mipmaps = params->mipmaps;
-    } else {
-        icon_novideo = icon;
-        mipmaps = false;
+    if (!params->video) {
+        assert(icon);
         screen->content_size.width = icon->w;
         screen->content_size.height = icon->h;
+        ok = sc_display_set_texture_from_surface(&screen->display, icon);
+        if (!ok) {
+            sc_icon_destroy(icon);
+            goto error_destroy_display;
+        }
     }
-    ok = sc_display_init(&screen->display, screen->renderer, icon_novideo,
-                         mipmaps);
+
     if (icon) {
         sc_icon_destroy(icon);
-    }
-    if (!ok) {
-        goto error_destroy_renderer;
     }
 
     screen->frame = av_frame_alloc();
