@@ -17,7 +17,7 @@
 #endif
 
 struct sc_display {
-    SDL_Renderer *renderer;
+    SDL_Renderer *renderer; // owned by the caller
     SDL_Texture *texture;
 
     struct sc_opengl gl;
@@ -30,7 +30,7 @@ struct sc_display {
 };
 
 bool
-sc_display_init(struct sc_display *display, SDL_Window *window,
+sc_display_init(struct sc_display *display, SDL_Renderer *renderer,
                 SDL_Surface *icon_novideo, bool mipmaps);
 
 void
