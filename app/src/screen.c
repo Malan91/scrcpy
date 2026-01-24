@@ -389,15 +389,21 @@ sc_screen_init(struct sc_screen *screen,
         goto error_destroy_window;
     }
 
+    screen->renderer = SDL_CreateRenderer(screen->window, NULL);
+    if (!screen->renderer) {
+        LOGE("Could not create renderer: %s", SDL_GetError());
+        goto error_destroy_window;
+    }
+
     SDL_Surface *icon_novideo = params->video ? NULL : icon;
     bool mipmaps = params->video && params->mipmaps;
-    ok = sc_display_init(&screen->display, screen->window, icon_novideo,
+    ok = sc_display_init(&screen->display, screen->renderer, icon_novideo,
                          mipmaps);
     if (icon) {
         sc_icon_destroy(icon);
     }
     if (!ok) {
-        goto error_destroy_window;
+        goto error_destroy_renderer;
     }
 
     screen->frame = av_frame_alloc();
@@ -461,6 +467,8 @@ sc_screen_init(struct sc_screen *screen,
 
 error_destroy_display:
     sc_display_destroy(&screen->display);
+error_destroy_renderer:
+    SDL_DestroyRenderer(screen->renderer);
 error_destroy_window:
     SDL_DestroyWindow(screen->window);
 error_destroy_fps_counter:
@@ -524,6 +532,7 @@ sc_screen_destroy(struct sc_screen *screen) {
 #endif
     sc_display_destroy(&screen->display);
     av_frame_free(&screen->frame);
+    SDL_DestroyRenderer(screen->renderer);
     SDL_DestroyWindow(screen->window);
     sc_fps_counter_destroy(&screen->fps_counter);
     sc_frame_buffer_destroy(&screen->fb);
